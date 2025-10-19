@@ -152,6 +152,18 @@ const gradesList = computed(() => {
   return grades;
 });
 
+const numberOfDone = computed(() => {
+  const _done = pointsList.value.filter((_points) => {
+    return typeof _points === "number" && !isNaN(_points);
+  });
+
+  return _done.length;
+});
+
+const progress = computed(() => {
+  return (numberOfDone.value / pointsList.value.length) * 100;
+});
+
 async function onSubmit() {
   console.log("submit");
 }
@@ -267,7 +279,11 @@ function onInput(event: Event) {
           >
             <UInputNumber v-model="state.numberOfSamples" />
           </UFormField>
-          <div class="mt-4">
+          <div class="mt-8">
+            <UProgress v-model="progress" size="sm" />
+            <p class="text-right text-sm whitespace-nowrap text-gray-500 mt-1">
+              {{ numberOfDone }} von {{ state.numberOfSamples }}
+            </p>
             <table class="relative divide-y divide-gray-300 table-fixed">
               <thead>
                 <tr>
