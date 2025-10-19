@@ -4,6 +4,11 @@ const scaleModes = [
   { label: "ab 11. Klasse", value: 40 },
 ];
 
+const pointModes = [
+  { label: "Ja", value: true },
+  { label: "Nein", value: false },
+];
+
 const state = reactive({
   totalPoints: 20,
   minPercentageToPass: 50,
@@ -163,8 +168,8 @@ function onInput(event: Event) {
 </script>
 
 <template>
-  <div>
-    <h1 class="text-2xl font-bold mt-8">Bewertungsschlüssel</h1>
+  <div class="py-8">
+    <h1 class="text-2xl font-bold">Mein Notenrechner</h1>
     <UForm :state="state" class="space-y-4 mt-8" @submit="onSubmit">
       <div class="flex gap-x-4">
         <UFormField label="Bewertungsskala" name="minPercentageToPass">
@@ -173,8 +178,8 @@ function onInput(event: Event) {
         <UFormField label="Bewertungseinheiten (BE)" name="totalPoints">
           <UInputNumber v-model="state.totalPoints" />
         </UFormField>
-        <UFormField label="&nbsp;">
-          <USwitch v-model="state.halfPoints" label="Halbe BE" class="pt-1.5" />
+        <UFormField label="Halbe BE" name="halfPoints">
+          <USelect v-model="state.halfPoints" :items="pointModes" />
         </UFormField>
       </div>
 
@@ -234,7 +239,7 @@ function onInput(event: Event) {
             </td>
           </tr>
           <!-- In BE -->
-          <tr>
+          <tr class="print:hidden">
             <th
               scope="row"
               class="text-left py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0"
@@ -251,71 +256,135 @@ function onInput(event: Event) {
           </tr>
         </tbody>
       </table>
-      <!-- Notenberechnung -->
-      <h2 class="mt-8">Notenberechnung und Notenspiegel</h2>
-      <UFormField label="Anzahl Prüflinge" name="numberOfSamples">
-        <UInputNumber v-model="state.numberOfSamples" />
-      </UFormField>
-      <!--
-      <div>
-        <UTextarea v-model="state.pointsToGradeInput" @input="onInput" />
-        <UTextarea v-model="pointsToGradeOutput" disabled />
+      <div class="flex mt-10 gap-x-36">
+        <!-- Notenberechnung -->
+        <div class="print:hidden">
+          <h2 class="text-xl font-bold">Notenberechnung</h2>
+          <UFormField
+            label="Anzahl Prüflinge"
+            name="numberOfSamples"
+            class="mt-4"
+          >
+            <UInputNumber v-model="state.numberOfSamples" />
+          </UFormField>
+          <div class="mt-4">
+            <table class="relative divide-y divide-gray-300 table-fixed">
+              <thead>
+                <tr>
+                  <th
+                    scope="col"
+                    class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold whitespace-nowrap text-gray-900 sm:pl-0"
+                  >
+                    #
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-2 py-3.5 text-left text-sm font-semibold whitespace-nowrap text-gray-900"
+                  >
+                    Erreichte BE
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-2 py-3.5 text-left text-sm font-semibold whitespace-nowrap text-gray-900"
+                  >
+                    Note
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200">
+                <tr v-for="s in state.numberOfSamples" :key="s">
+                  <td
+                    class="py-2 pr-3 pl-4 text-sm whitespace-nowrap text-gray-500 sm:pl-0"
+                  >
+                    <div
+                      class="rounded-md bg-gray-100 px-2 py-1 text-xs text-right font-medium text-gray-600 outline-1 outline-gray-200"
+                    >
+                      {{ s }}
+                    </div>
+                  </td>
+                  <td class="px-2 py-2 text-sm whitespace-nowrap text-gray-500">
+                    <UInput
+                      v-model="state.pointsToGradeInput[s - 1]"
+                      variant="soft"
+                      @input="onInput"
+                    />
+                  </td>
+                  <td class="px-2 py-2 text-sm whitespace-nowrap text-gray-500">
+                    {{ gradesList[s - 1] }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- Notespiegel -->
+        <div class="min-w-md">
+          <h2 class="text-xl font-bold">Notenspiegel</h2>
+          <div class="mt-4">
+            <table
+              class="relative min-w-full divide-y divide-gray-300 table-fixed"
+            >
+              <tbody class="divide-y divide-gray-200">
+                <tr>
+                  <th
+                    scope="row"
+                    class="text-left py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0"
+                  >
+                    Note
+                  </th>
+                  <td
+                    v-for="grade in grades"
+                    :key="grade"
+                    scope="row"
+                    class="px-3 py-4 text-sm whitespace-nowrap text-gray-500"
+                  >
+                    {{ grade }}
+                  </td>
+                </tr>
+                <tr>
+                  <th
+                    scope="row"
+                    class="text-left py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0"
+                  >
+                    Anzahl
+                  </th>
+                  <td
+                    v-for="(count, index) in bins.data"
+                    :key="index"
+                    scope="row"
+                    class="px-3 py-4 text-sm whitespace-nowrap text-gray-500"
+                  >
+                    {{ count || "--" }}
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th
+                    scope="row"
+                    colspan="7"
+                    class="pt-4 pr-3 pl-4 text-right sm:table-cell sm:pl-0 text-sm/6 font-medium text-gray-500"
+                  >
+                    Durchschnitt
+                  </th>
+                </tr>
+                <tr>
+                  <td
+                    colspan="7"
+                    class="pt-4 pr-4 pl-3 text-right text-xl font-semibold tracking-tight text-gray-900 sm:pl-0"
+                  >
+                    {{
+                      isNaN(bins.avg)
+                        ? "--"
+                        : bins.avg.toFixed(1).replace(".", ",")
+                    }}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
       </div>
-      -->
-      <div class="mt-8">
-        <table class="relative max-w-1/4 divide-y divide-gray-300 table-fixed">
-          <thead>
-            <tr>
-              <th
-                scope="col"
-                class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold whitespace-nowrap text-gray-900 sm:pl-0"
-              >
-                #
-              </th>
-              <th
-                scope="col"
-                class="px-2 py-3.5 text-left text-sm font-semibold whitespace-nowrap text-gray-900"
-              >
-                Erreichte BE
-              </th>
-              <th
-                scope="col"
-                class="px-2 py-3.5 text-left text-sm font-semibold whitespace-nowrap text-gray-900"
-              >
-                Note
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-for="s in state.numberOfSamples" :key="s">
-              <td
-                class="py-2 pr-3 pl-4 text-sm whitespace-nowrap text-gray-500 sm:pl-0"
-              >
-                <div
-                  class="rounded-md bg-gray-100 px-2 py-1 text-xs text-right font-medium text-gray-600 outline-1 outline-gray-200"
-                >
-                  {{ s }}
-                </div>
-              </td>
-              <td class="px-2 py-2 text-sm whitespace-nowrap text-gray-500">
-                <UInput
-                  v-model="state.pointsToGradeInput[s - 1]"
-                  variant="soft"
-                  @input="onInput"
-                />
-              </td>
-              <td class="px-2 py-2 text-sm whitespace-nowrap text-gray-500">
-                {{ gradesList[s - 1] }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p>
-        {{ bins }}
-      </p>
-      <p>{{ pointsList }}</p>
-      <p>{{ gradesList }}</p>
     </div>
   </div>
 </template>
