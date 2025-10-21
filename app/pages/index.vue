@@ -260,7 +260,7 @@ const gradeScaleData = computed(() => {
         from,
         to,
         percent: `≥ ${percent.toFixed()}`,
-        points: `≥ ${to}`,
+        points: `≥ ${to.toLocaleString()}`,
       });
     } else if (grade === 6 && level === "max") {
       let from = _prevTo - lsb;
@@ -271,7 +271,7 @@ const gradeScaleData = computed(() => {
         from,
         to,
         percent: `< ${_prevPercent.toFixed()}`,
-        points: `< ${_prevTo}`,
+        points: `< ${_prevTo.toLocaleString()}`,
       });
     }
   });
@@ -310,7 +310,7 @@ const gradePointsScaleData = computed(() => {
         from,
         to,
         percent: `≥ ${percent.toFixed()}`,
-        points: `≥ ${to}`,
+        points: `≥ ${to.toLocaleString()}`,
       });
     } else if (level === "max") {
       let from = _prevTo - lsb;
@@ -321,7 +321,7 @@ const gradePointsScaleData = computed(() => {
         from,
         to,
         percent: `< ${_prevPercent.toFixed()}`,
-        points: `< ${_prevTo}`,
+        points: `< ${_prevTo.toLocaleString()}`,
       });
     }
   });
@@ -443,7 +443,15 @@ function onPointsInput(event: Event) {
                 : gradePointsScaleData"
               :key="index"
             >
-              {{ item.points }}
+              <UPopover mode="hover">
+                <span>{{ item.points }}</span>
+                <template #content>
+                  <div class="py-2 px-4 inline-flex text-sm text-gray-500">
+                    {{ item.from.toLocaleString() }} ..
+                    {{ item.to.toLocaleString() }}
+                  </div>
+                </template>
+              </UPopover>
             </RowDataCell>
           </tr>
         </tbody>
