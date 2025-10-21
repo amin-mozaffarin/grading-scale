@@ -42,14 +42,28 @@ const pointsList = computed(() => {
 const gradesList = computed(() => {
   return pointsList.value.map((points) => {
     if (isNaN(points)) {
-      return NaN;
+      return { value: NaN, label: "" };
     }
 
     const scaleItem = gradeScale.value.find((item) => {
       return points >= item.points;
     });
 
-    return state.output === "grade" ? scaleItem?.grade : scaleItem?.gradePoints;
+    const value =
+      state.output === "grade" ? scaleItem!.grade : scaleItem!.gradePoints;
+    let label = value + "";
+    if (state.output === "grade") {
+      if (scaleItem!.level === "max") {
+        label = label + "+";
+      } else if (scaleItem!.level === "min") {
+        label = label + "-";
+      }
+    }
+
+    return {
+      value,
+      label,
+    };
   });
 });
 
@@ -150,8 +164,13 @@ const gradeScale = computed(() => {
 });
 
 const gradeScaleData = computed(() => {
-  const data: { grade: number; from: number; to: number; percent: string }[] =
-    [];
+  const data: {
+    grade: number;
+    from: number;
+    to: number;
+    percent: string;
+    points: string;
+  }[] = [];
 
   const { halfPoints, maxPoints } = state;
   const lsb = halfPoints ? 0.5 : 1;
@@ -170,12 +189,24 @@ const gradeScaleData = computed(() => {
       from = Math.max(from, to);
       _prevTo = to;
       _prevPercent = percent;
-      data.push({ grade, from, to, percent: `≥ ${percent.toFixed()}` });
+      data.push({
+        grade,
+        from,
+        to,
+        percent: `≥ ${percent.toFixed()}`,
+        points: `≥ ${to}`,
+      });
     } else if (grade === 6 && level === "max") {
       let from = _prevTo - lsb;
       const to = 0;
       from = Math.max(from, to);
-      data.push({ grade, from, to, percent: `< ${_prevPercent.toFixed()}` });
+      data.push({
+        grade,
+        from,
+        to,
+        percent: `< ${_prevPercent.toFixed()}`,
+        points: `< ${_prevTo}`,
+      });
     }
   });
 
@@ -188,6 +219,7 @@ const gradePointsScaleData = computed(() => {
     from: number;
     to: number;
     percent: string;
+    points: string;
   }[] = [];
 
   const { halfPoints, maxPoints } = state;
@@ -207,7 +239,13 @@ const gradePointsScaleData = computed(() => {
       from = Math.max(from, to);
       _prevTo = to;
       _prevPercent = percent;
-      data.push({ gradePoints, from, to, percent: `≥ ${percent.toFixed()}` });
+      data.push({
+        gradePoints,
+        from,
+        to,
+        percent: `≥ ${percent.toFixed()}`,
+        points: `≥ ${to}`,
+      });
     } else if (level === "max") {
       let from = _prevTo - lsb;
       const to = 0;
@@ -217,6 +255,7 @@ const gradePointsScaleData = computed(() => {
         from,
         to,
         percent: `< ${_prevPercent.toFixed()}`,
+        points: `< ${_prevTo}`,
       });
     }
   });
@@ -231,7 +270,9 @@ const bins = computed(() => {
 
   const data = new Array(numberOfBins).fill(-1).map((_, index) => {
     const value = state.output === "grade" ? index + 1 : 15 - index;
-    const count = gradesList.value.filter((grade) => grade === value).length;
+    const count = gradesList.value.filter(
+      (grade) => grade.value === value
+    ).length;
     sum += value * count;
     n += count;
     return {
@@ -289,10 +330,8 @@ function onPointsInput(event: Event) {
       <UButton type="submit" class="sr-only"> Submit </UButton>
     </UForm>
 
-    <div class="mt-8">
-      <table
-        class="relative min-w-full divide-y divide-gray-300 table-fixed text-center"
-      >
+    <div class="mt-12">
+      <table class="w-full divide-y divide-gray-300 table-fixed text-center">
         <tbody class="divide-y divide-gray-200">
           <!-- Note -->
           <tr
@@ -300,76 +339,46 @@ function onPointsInput(event: Event) {
               'divide-x divide-gray-200': state.output === 'gradePoints',
             }"
           >
-            <th
-              scope="row"
-              class="w-1/7 text-left pb-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0"
-            >
-              Note
-            </th>
-            <td
+            <RowHeaderCell class="pt-0 w-24"> Note </RowHeaderCell>
+            <RowDataCell
               v-for="grade in 6"
               :key="grade"
               :colspan="state.output === 'gradePoints' && grade < 6 ? 3 : 1"
-              class="w-1/7 px-3 pb-4 text-sm whitespace-nowrap text-gray-500"
+              class="pt-0"
             >
               {{ grade }}
-            </td>
+            </RowDataCell>
           </tr>
           <!-- Notenpunkte -->
           <tr v-if="state.output === 'gradePoints'">
-            <th
-              scope="row"
-              class="w-1/7 text-left py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0"
-            >
-              Notenpunkte
-            </th>
-            <td
-              v-for="count in 16"
-              :key="count"
-              class="w-1/7 px-3 py-4 text-sm whitespace-nowrap text-gray-500"
-            >
+            <RowHeaderCell> Notenpunkte </RowHeaderCell>
+            <RowDataCell v-for="count in 16" :key="count">
               {{ 16 - count }}
-            </td>
+            </RowDataCell>
           </tr>
           <!-- Bereich in % -->
           <tr>
-            <th
-              scope="row"
-              class="text-left py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0"
-            >
-              In %
-            </th>
-            <td
+            <RowHeaderCell> In % </RowHeaderCell>
+            <RowDataCell
               v-for="(item, index) in state.output === 'grade'
                 ? gradeScaleData
                 : gradePointsScaleData"
               :key="index"
-              class="px-3 py-4 text-sm whitespace-nowrap text-gray-500"
             >
               {{ item.percent }}
-            </td>
+            </RowDataCell>
           </tr>
           <!-- Bereich in Punkten -->
           <tr>
-            <th
-              scope="row"
-              class="text-left py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0"
-            >
-              In Punkten
-            </th>
-            <td
+            <RowHeaderCell> In Punkten </RowHeaderCell>
+            <RowDataCell
               v-for="(item, index) in state.output === 'grade'
                 ? gradeScaleData
                 : gradePointsScaleData"
               :key="index"
-              class="px-3 py-4 text-sm whitespace-nowrap text-gray-500"
             >
-              {{
-                item.from === item.to
-                  ? item.from.toLocaleString()
-                  : `${item.from.toLocaleString()} .. ${item.to.toLocaleString()}`
-              }}
-            </td>
+              {{ item.points }}
+            </RowDataCell>
           </tr>
         </tbody>
       </table>
@@ -390,50 +399,36 @@ function onPointsInput(event: Event) {
           <p class="text-right text-sm whitespace-nowrap text-gray-500 mt-1">
             {{ filteredPointsList.length }} von {{ pointsList.length }}
           </p>
-          <table class="relative divide-y divide-gray-300 table-fixed">
+          <table class="divide-y divide-gray-300 table-fixed">
             <thead>
               <tr>
-                <th
-                  scope="col"
-                  class="py-3.5 pr-3 pl-4 text-left text-sm font-semibold whitespace-nowrap text-gray-900 sm:pl-0"
-                >
-                  #
-                </th>
-                <th
-                  scope="col"
-                  class="px-2 py-3.5 text-left text-sm font-semibold whitespace-nowrap text-gray-900"
-                >
+                <ColHeaderCell> # </ColHeaderCell>
+                <ColHeaderCell class="text-center">
                   Erreichte Punktzahl
-                </th>
-                <th
-                  scope="col"
-                  class="px-2 py-3.5 text-left text-sm font-semibold whitespace-nowrap text-gray-900"
-                >
-                  Note
-                </th>
+                </ColHeaderCell>
+                <ColHeaderCell class="text-center"> Note </ColHeaderCell>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
               <tr v-for="(s, index) in state.numberOfSamples" :key="s">
-                <td
-                  class="py-2 pr-3 pl-4 text-sm whitespace-nowrap text-gray-500 sm:pl-0"
-                >
+                <ColDataCell class="py-0!">
                   <div
                     class="rounded-md bg-gray-100 px-2 py-1 text-xs text-right font-medium text-gray-600 outline-1 outline-gray-200"
                   >
                     {{ s }}
                   </div>
-                </td>
-                <td class="px-2 py-2 text-sm whitespace-nowrap text-gray-500">
+                </ColDataCell>
+                <ColDataCell class="py-0!">
                   <UInput
                     v-model="state.pointsToGradeInput[index]"
+                    style="text-align: center"
                     variant="soft"
                     @input="(event: Event) => onPointsInput(event)"
                   />
-                </td>
-                <td class="px-2 py-2 text-sm whitespace-nowrap text-gray-500">
-                  {{ isNaN(gradesList[index]!) ? "" : gradesList[index] }}
-                </td>
+                </ColDataCell>
+                <ColDataCell class="py-0! text-center!">
+                  {{ gradesList[index]!.label }}
+                </ColDataCell>
               </tr>
             </tbody>
           </table>
@@ -443,62 +438,48 @@ function onPointsInput(event: Event) {
       <div class="min-w-md grow">
         <h2 class="text-xl font-bold">Notenverteilung</h2>
         <div class="mt-4">
-          <table
-            class="relative min-w-full divide-y divide-gray-300 table-fixed"
-          >
+          <table class="w-full divide-y divide-gray-300 table-fixed">
             <tbody class="divide-y divide-gray-200">
               <tr>
-                <th
-                  scope="row"
-                  class="text-left py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0"
-                >
-                  Note
-                </th>
-                <td
+                <RowHeaderCell scope="row"> Note </RowHeaderCell>
+                <RowDataCell
                   v-for="item in bins.data"
                   :key="item.value"
-                  scope="row"
-                  class="px-3 py-4 text-sm whitespace-nowrap text-gray-500"
+                  class="text-center"
                 >
                   {{ item.value }}
-                </td>
+                </RowDataCell>
               </tr>
               <tr>
-                <th
-                  scope="row"
-                  class="text-left py-4 pr-3 pl-4 text-sm font-medium whitespace-nowrap text-gray-900 sm:pl-0"
-                >
-                  Anzahl
-                </th>
-                <td
+                <RowHeaderCell scope="row"> Anzahl </RowHeaderCell>
+                <RowDataCell
                   v-for="item in bins.data"
                   :key="item.value"
-                  scope="row"
-                  class="px-3 py-4 text-sm whitespace-nowrap text-gray-500"
+                  class="text-center"
                 >
                   {{ item.count || "--" }}
-                </td>
+                </RowDataCell>
               </tr>
             </tbody>
             <tfoot>
               <tr>
-                <th
+                <RowDataCell
                   scope="row"
                   :colspan="bins.data.length + 1"
-                  class="pt-4 pr-3 pl-4 text-right sm:table-cell sm:pl-0 text-sm/6 font-medium text-gray-500"
+                  class="text-right pr-0 pb-0"
                 >
                   Durchschnitt
-                </th>
+                </RowDataCell>
               </tr>
               <tr>
                 <td
                   :colspan="bins.data.length + 1"
-                  class="pt-4 pr-4 pl-3 text-right text-xl font-semibold tracking-tight text-gray-900 sm:pl-0"
+                  class="pt-4 pr-4 pl-3 text-right text-xl font-semibold tracking-tight text-gray-900 sm:pr-0"
                 >
                   {{
                     isNaN(bins.avg)
                       ? "--"
-                      : round(bins.avg, 0.1).toLocaleString()
+                      : round(bins.avg, 0.1).toFixed(1).replace(/\./g, ",")
                   }}
                 </td>
               </tr>
