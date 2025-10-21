@@ -1,4 +1,70 @@
 <script setup lang="ts">
+import { Bar } from "vue-chartjs";
+import {
+  Chart as ChartJS,
+  Tooltip,
+  Legend,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+} from "chart.js";
+
+ChartJS.register(Tooltip, Legend, BarElement, CategoryScale, LinearScale);
+
+const chartData = computed(() => {
+  return {
+    labels: bins.value.data.map((bin) => bin.value),
+    datasets: [
+      {
+        data: bins.value.data.map((bin) => bin.count),
+        backgroundColor: [
+          ...new Array(state.output === "grade" ? 4 : 12).fill(
+            "oklch(72.3% 0.219 149.579 / 0.2)"
+          ),
+          ...new Array(state.output === "grade" ? 2 : 4).fill(
+            "rgba(255, 99, 132, 0.2)"
+          ),
+        ],
+        borderColor: [
+          ...new Array(state.output === "grade" ? 4 : 12).fill(
+            "oklch(72.3% 0.219 149.579)"
+          ),
+          ...new Array(state.output === "grade" ? 2 : 4).fill(
+            "rgba(255, 99, 132)"
+          ),
+        ],
+        borderWidth: {
+          top: 2,
+        },
+        barPercentage: 1,
+        categoryPercentage: 1,
+      },
+    ],
+  };
+});
+
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      display: false,
+    },
+  },
+  scales: {
+    x: {
+      grid: {
+        display: false, // Hides vertical grid lines (running up/down)
+      },
+    },
+    y: {
+      ticks: {
+        stepSize: 1,
+      },
+    },
+  },
+};
+
 type ScaleConfig = "greaterOrEqual_50_6" | "greaterOrEqual_40_15";
 const scaleConfigOptions: { label: string; value: ScaleConfig }[] = [
   { label: "bis 10. Klasse", value: "greaterOrEqual_50_6" },
@@ -411,14 +477,14 @@ function onPointsInput(event: Event) {
             </thead>
             <tbody class="divide-y divide-gray-200">
               <tr v-for="(s, index) in state.numberOfSamples" :key="s">
-                <ColDataCell class="py-0!">
+                <ColDataCell class="py-2!">
                   <div
                     class="rounded-md bg-gray-100 px-2 py-1 text-xs text-right font-medium text-gray-600 outline-1 outline-gray-200"
                   >
                     {{ s }}
                   </div>
                 </ColDataCell>
-                <ColDataCell class="py-0!">
+                <ColDataCell class="py-2!">
                   <UInput
                     v-model="state.pointsToGradeInput[index]"
                     style="text-align: center"
@@ -485,6 +551,14 @@ function onPointsInput(event: Event) {
               </tr>
             </tfoot>
           </table>
+        </div>
+        <div class="mt-8 relative h-96">
+          <Bar
+            id="my-chart-id"
+            :data="chartData"
+            :options="chartOptions"
+            class="w-full"
+          />
         </div>
       </div>
     </div>
